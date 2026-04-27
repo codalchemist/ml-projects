@@ -108,9 +108,9 @@ else:
 
             log_watch(st.session_state.user, movie)
 
-            cols = st.columns(5)
+            cols = st.columns(min(5, len(recs)))
 
-            for i, (idx, score) in enumerate(recs):
+            for i, (idx, score) in enumerate(recs[:5]):
                 with cols[i]:
                     st.image(fetch_poster(df.iloc[idx]["id"]), use_container_width=True)
                     st.caption(df.iloc[idx]["title"])
@@ -136,3 +136,11 @@ else:
                 st.write("•", m)
         else:
             st.write("No watch history yet")
+
+
+st.markdown("""
+---
+<div style="text-align:center; color:gray; padding:10px;">
+Built by Chirag Nagpal • WatchNext © 2026 • All Rights Reserved
+</div>
+""", unsafe_allow_html=True)
