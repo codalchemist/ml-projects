@@ -65,28 +65,28 @@ if "user" not in st.session_state:
 
 
 def fetch_poster(movie_id):
-    """Guaranteed poster loader with fallback"""
     try:
-        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}"
-        r = requests.get(url, timeout=5)
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
+        r = requests.get(url, timeout=6)
 
         if r.status_code != 200:
             return POSTER_FALLBACK
 
         data = r.json()
-        path = data.get("poster_path")
 
-        if path:
-            return "https://image.tmdb.org/t/p/w500" + path
+        poster = data.get("poster_path")
 
-    except:
-        pass
+        if poster and poster != "None":
+            return f"https://image.tmdb.org/t/p/w500{poster}"
 
-    return POSTER_FALLBACK
+        return POSTER_FALLBACK
+
+    except Exception as e:
+        return POSTER_FALLBACK
 
 
 def fetch_details(movie_id):
-    """Safe movie details fetch"""
+   "
     try:
         url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&append_to_response=credits"
         r = requests.get(url, timeout=5)
@@ -101,7 +101,7 @@ def fetch_details(movie_id):
 
 
 def get_india_time():
-    """Fixed clean time (NO pytz, NO errors)"""
+
     return datetime.now().strftime("%d %b %Y • %H:%M")
 
 
@@ -151,7 +151,7 @@ else:
             ["All", "Action", "Comedy", "Drama", "Horror", "Romance", "Sci-Fi"]
         )
 
-        # SAFE FILTER (NO BREAKS)
+
         if genre == "All":
             filtered = movies
         else:
