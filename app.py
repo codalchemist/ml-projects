@@ -15,57 +15,74 @@ movies = pd.DataFrame(pd.read_pickle("movie_dict.pkl"))
 st.set_page_config(page_title="WatchNext", layout="wide")
 
 def fetch_poster(movie_id):
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
-    for _ in range(2):
-        try:
-            r = requests.get(url, timeout=10)
-            data = r.json()
-            p = data.get("poster_path")
-            if p:
-                return "https://image.tmdb.org/t/p/w500" + p
+    if pd.isna(movie_id):
+        return PLACEHOLDER
+
+    try:
+        url = f"https://api.themoviedb.org/3/movie/{int(movie_id)}?api_key={API_KEY}&language=en-US"
+        r = requests.get(url, timeout=8)
+
+        if r.status_code != 200:
             return PLACEHOLDER
-        except:
-            time.sleep(1)
-    return PLACEHOLDER
+
+        data = r.json()
+        path = data.get("poster_path")
+
+        if path:
+            return "https://image.tmdb.org/t/p/w500" + path
+
+        return PLACEHOLDER
+
+    except:
+        return PLACEHOLDER
+
 
 def movie_meta(movie):
     row = movies[movies["title"] == movie].iloc[0]
     return row.get("tags", "Unknown")
 
+
 if "user" not in st.session_state:
     st.session_state.user = None
 
+
 now = datetime.now()
 
-st.markdown(f"""
-# 🎬 WatchNext
-### {now.strftime('%A, %d %B %Y')}
-""")
 
-menu = ["Login", "Signup"]
-choice = st.sidebar.selectbox("Account", menu)
+def login_page():
+    st.markdown("# 🎬 WatchNext")
+    st.markdown("### Login to continue")
 
-if choice == "Signup":
-    u = st.text_input("Username")
-    p = st.text_input("Password", type="password")
-    if st.button("Create Account"):
-        if create_user(u, p):
-            st.success("Account created successfully")
-        else:
-            st.error("User already exists")
+    tab1, tab2 = st.tabs(["Login", "Signup"])
 
-if choice == "Login":
-    u = st.text_input("Username")
-    p = st.text_input("Password", type="password")
-    if st.button("Login"):
-        if login_user(u, p):
-            st.session_state.user = u
-            st.success("Welcome " + u)
-            st.rerun()
-        else:
-            st.error("Invalid credentials")
+    with tab1:
+        u = st.text_input("Username")
+        p = st.text_input("Password", type="password")
 
-if st.session_state.user:
+        if st.button("Login"):
+            if login_user(u, p):
+                st.session_state.user = u
+                st.rerun()
+            else:
+                st.error("Invalid credentials")
+
+    with tab2:
+        u2 = st.text_input("New Username")
+        p2 = st.text_input("New Password", type="password")
+
+        if st.button("Create Account"):
+            if create_user(u2, p2):
+                st.success("Account created, now login")
+            else:
+                st.error("User already exists")
+
+
+def app_page():
+
+    st.markdown(f"""
+    # 🎬 WatchNext
+    ### {now.strftime('%A, %d %B %Y')}
+    """)
 
     st.sidebar.success("Logged in as " + st.session_state.user)
 
@@ -86,8 +103,9 @@ if st.session_state.user:
             for i, (idx, _) in enumerate(recs):
                 if i < len(cols):
                     with cols[i]:
-                        st.image(fetch_poster(movies.iloc[idx]["id"]), use_container_width=True)
-                        st.caption(movies.iloc[idx]["title"])
+                        movie_id = movies.iloc[int(idx)]["id"]
+                        st.image(fetch_poster(movie_id), use_container_width=True)
+                        st.caption(movies.iloc[int(idx)]["title"])
 
             log_watch(st.session_state.user, movie)
 
@@ -110,7 +128,13 @@ if st.session_state.user:
             for h in reversed(history):
                 st.write("• " + h)
 
-st.markdown("""
----
-⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved
-""")
+    st.markdown("""
+    ---
+    ⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved
+    """)
+
+
+if st.session_state.user is None:
+    login_page()
+else:
+    app_page()
