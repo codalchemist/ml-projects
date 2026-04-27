@@ -7,7 +7,7 @@ from auth import create_user, login_user
 from analytics import log_watch, get_history
 from recommender import hybrid_recommend, trending_movies
 
-API_KEY = "3ee5dc2f1f74f34381d2b2a0e6b783a3"
+API_KEY = "3ee5dc2f1f74f34382d1b2a0e6b783a3"
 PLACEHOLDER = "https://via.placeholder.com/500x750?text=No+Poster"
 
 movies = pd.DataFrame(pd.read_pickle("movie_dict.pkl"))
@@ -30,8 +30,7 @@ def fetch_poster(movie_id):
 
 def movie_meta(movie):
     row = movies[movies["title"] == movie].iloc[0]
-    genres = row.get("tags", "Unknown")
-    return genres
+    return row.get("tags", "Unknown")
 
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -49,17 +48,15 @@ choice = st.sidebar.selectbox("Account", menu)
 if choice == "Signup":
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
-
-    if st.button("Create"):
+    if st.button("Create Account"):
         if create_user(u, p):
-            st.success("Account created")
+            st.success("Account created successfully")
         else:
-            st.error("User exists")
+            st.error("User already exists")
 
-elif choice == "Login":
+if choice == "Login":
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
-
     if st.button("Login"):
         if login_user(u, p):
             st.session_state.user = u
@@ -75,7 +72,7 @@ if st.session_state.user:
     tab1, tab2, tab3 = st.tabs(["For You", "Trending", "History"])
 
     with tab1:
-        genre = st.selectbox("Filter by genre", ["All"] + list(set(movies["tags"].dropna())))
+        genre = st.selectbox("Filter by genre", ["All"] + sorted(set(movies["tags"].dropna())))
 
         filtered = movies if genre == "All" else movies[movies["tags"] == genre]
 
@@ -87,9 +84,10 @@ if st.session_state.user:
             cols = st.columns(5)
 
             for i, (idx, _) in enumerate(recs):
-                with cols[i]:
-                    st.image(fetch_poster(movies.iloc[idx]["id"]), use_container_width=True)
-                    st.caption(movies.iloc[idx]["title"])
+                if i < len(cols):
+                    with cols[i]:
+                        st.image(fetch_poster(movies.iloc[idx]["id"]), use_container_width=True)
+                        st.caption(movies.iloc[idx]["title"])
 
             log_watch(st.session_state.user, movie)
 
@@ -98,21 +96,21 @@ if st.session_state.user:
 
         cols = st.columns(4)
 
-        for i in range(4):
+        for i in range(min(4, len(trend))):
             with cols[i]:
-                st.image(poster(trend.iloc[i]["id"]))
+                st.image(fetch_poster(trend.iloc[i]["id"]), use_container_width=True)
                 st.caption(trend.iloc[i]["title"])
 
     with tab3:
         history = get_history(st.session_state.user)
 
         if not history:
-            st.write("No history yet")
+            st.write("No watch history yet")
         else:
             for h in reversed(history):
                 st.write("• " + h)
 
 st.markdown("""
 ---
-⭐💛 Designed by CHIRAG NAGPAL, 2026 — All rights reserved
+⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved
 """)
