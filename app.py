@@ -157,4 +157,4 @@ else:
 
 
 st.markdown("---")
-st.markdown("⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved")A
+st.markdown("⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved")
