@@ -92,7 +92,7 @@ if st.session_state.user:
             log_watch(st.session_state.user, movie)
 
     with tab2:
-        trend = trending_movies(movies)
+        trend = trending_movies()
 
         cols = st.columns(4)
 
