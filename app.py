@@ -68,12 +68,15 @@ def recommend(movie):
 
 
 def trending_movies():
-    return movies.sort_values("vote_average", ascending=False).head(8)
+    if "vote_average" in movies.columns:
+        return movies.sort_values("vote_average", ascending=False).head(8)
+    else:
+        return movies.sample(8)
 
 
-st.set_page_config(page_title="CineMatch AI", layout="wide")
+st.set_page_config(page_title="WatchNext", layout="wide")
 
-st.title("🎬 CineMatch AI")
+st.title("🎬 WatchNext")
 
 if not st.session_state.user:
     name = st.text_input("Enter your name")
