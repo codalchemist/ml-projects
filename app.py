@@ -1,4 +1,4 @@
-\import streamlit as st
+import streamlit as st
 import requests
 from datetime import datetime
 from recommender import hybrid_recommend, movies, trending_movies
