@@ -1,19 +1,7 @@
-import sqlite3
-
-conn = sqlite3.connect("users.db", check_same_thread=False)
-cur = conn.cursor()
-
-cur.execute("""
-CREATE TABLE IF NOT EXISTS history (
-    user TEXT,
-    movie TEXT
-)
-""")
-
-conn.commit()
+from db import cur, conn
 
 def log_watch(user, movie):
-    cur.execute("INSERT INTO history (user, movie) VALUES (?, ?)", (user, movie))
+    cur.execute("INSERT INTO history VALUES (?, ?)", (user, movie))
     conn.commit()
 
 def get_history(user):

@@ -1,116 +1,160 @@
+import os
 import streamlit as st
 import pandas as pd
 import requests
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import time
+from recommender import recommend
+from analytics import log_watch, get_history
+from auth import create_user, login_user
 
-API_KEY = "3ee5dc2f1f74f34382d1b2a0e6b783a3"
+API_KEY = st.secrets.get("TMDB_API_KEY") or os.getenv("TMDB_API_KEY")
 PLACEHOLDER = "https://via.placeholder.com/500x750?text=No+Poster"
 
 st.set_page_config(page_title="WatchNext", layout="wide")
 
 movies = pd.DataFrame(pd.read_pickle("movie_dict.pkl"))
 
-if "tags" not in movies.columns:
-    st.error("Dataset missing 'tags' column")
+if not API_KEY:
+    st.error("Missing TMDB API Key")
     st.stop()
 
-cv = CountVectorizer(max_features=5000, stop_words="english")
-vector = cv.fit_transform(movies["tags"].fillna(""))
-similarity = cosine_similarity(vector)
-
-
-def fetch_poster(movie_id):
+def fetch_movie_details(movie_id):
     try:
         url = f"https://api.themoviedb.org/3/movie/{int(movie_id)}?api_key={API_KEY}&language=en-US"
-        r = requests.get(url, timeout=8)
-
-        if r.status_code != 200:
-            return PLACEHOLDER
-
-        data = r.json()
-        path = data.get("poster_path")
-
-        if path:
-            return "https://image.tmdb.org/t/p/w500" + path
-
-        return PLACEHOLDER
-
-    except:
-        return PLACEHOLDER
-
-
-def movie_details(movie_id):
-    try:
-        url = f"https://api.themoviedb.org/3/movie/{int(movie_id)}?api_key={API_KEY}&language=en-US"
-        c_url = f"https://api.themoviedb.org/3/movie/{int(movie_id)}/credits?api_key={API_KEY}"
+        credits_url = f"https://api.themoviedb.org/3/movie/{int(movie_id)}/credits?api_key={API_KEY}"
 
         r = requests.get(url, timeout=8)
-        c = requests.get(c_url, timeout=8)
+        c = requests.get(credits_url, timeout=8)
 
         if r.status_code != 200:
             return None
 
-        r = r.json()
-        c = c.json()
+        data = r.json()
+        credits = c.json() if c.status_code == 200 else {}
 
-        title = r.get("title", "Unknown")
-        overview = r.get("overview", "No description available")
-        rating = r.get("vote_average", 0)
-
-        genres = ", ".join([g["name"] for g in r.get("genres", [])]) or "N/A"
-        actors = ", ".join([a["name"] for a in c.get("cast", [])[:5]]) or "N/A"
-
-        adult = "18+" if r.get("adult") else "Family Safe"
+        title = data.get("title", "Unknown")
+        overview = data.get("overview", "No description available")
+        rating = data.get("vote_average", 0)
+        genres = ", ".join([g["name"] for g in data.get("genres", [])]) or "N/A"
+        adult = "🔞 18+" if data.get("adult") else "👨‍👩‍👧 Family Safe"
+        actors = ", ".join([a["name"] for a in credits.get("cast", [])[:5]]) or "N/A"
         link = f"https://www.themoviedb.org/movie/{movie_id}"
 
-        return title, overview, rating, genres, actors, adult, link
+        poster_path = data.get("poster_path")
+        poster = "https://image.tmdb.org/t/p/w500" + poster_path if poster_path else PLACEHOLDER
+
+        return title, overview, rating, genres, actors, adult, link, poster
 
     except:
         return None
 
 
-def recommend(movie):
-    if movie not in movies["title"].values:
+def get_recommendations(movie):
+    try:
+        recs = recommend(movie)
+        return recs
+    except:
         return []
 
-    idx = movies[movies["title"] == movie].index[0]
-    scores = list(enumerate(similarity[idx]))
-    scores = sorted(scores, key=lambda x: x[1], reverse=True)[1:6]
 
-    return scores
+if "user" not in st.session_state:
+    st.session_state.user = None
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 
 st.title("🎬 WatchNext")
 
-movie = st.selectbox("Pick a movie", movies["title"].values)
 
-if st.button("Recommend"):
+if not st.session_state.user:
+    st.sidebar.subheader("Login / Signup")
 
-    recs = recommend(movie)
-    cols = st.columns(5)
+    option = st.sidebar.selectbox("Choose", ["Login", "Signup"])
 
-    for i, (idx, _) in enumerate(recs):
-        with cols[i]:
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type="password")
 
-            movie_id = movies.iloc[idx]["id"]
+    if option == "Signup":
+        if st.sidebar.button("Create Account"):
+            if create_user(username, password):
+                st.sidebar.success("Account created")
+            else:
+                st.sidebar.error("User already exists")
 
-            poster = fetch_poster(movie_id)
-            details = movie_details(movie_id)
+    if option == "Login":
+        if st.sidebar.button("Login"):
+            if login_user(username, password):
+                st.session_state.user = username
+                st.rerun()
+            else:
+                st.sidebar.error("Invalid login")
+
+else:
+
+    st.sidebar.success(f"Logged in as {st.session_state.user}")
+
+    tab1, tab2, tab3 = st.tabs(["For You", "Trending", "History"])
+
+    with tab1:
+        movie = st.selectbox("Pick a movie", movies["title"].values)
+
+        if st.button("Recommend"):
+            recs = get_recommendations(movie)
+
+            cols = st.columns(5)
+
+            for i, (idx, _) in enumerate(recs):
+                if i >= 5:
+                    break
+
+                movie_id = movies.iloc[idx]["id"]
+                details = fetch_movie_details(movie_id)
+
+                if details:
+                    title, overview, rating, genres, actors, adult, link, poster = details
+
+                    with cols[i]:
+                        st.image(poster, use_container_width=True)
+                        st.markdown(f"### {title}")
+                        st.write(f"⭐ {rating}")
+                        st.write(f"{genres}")
+                        st.write(f"{actors}")
+                        st.write(adult)
+                        st.write(overview[:180] + "...")
+                        st.markdown(f"[Open on TMDB]({link})")
+
+            st.session_state.history.append(movie)
+            log_watch(st.session_state.user, movie)
+
+    with tab2:
+        st.subheader("Trending Movies")
+
+        sample = movies.sample(5)
+
+        cols = st.columns(5)
+
+        for i in range(5):
+            m = sample.iloc[i]
+            details = fetch_movie_details(m["id"])
 
             if details:
-                title, overview, rating, genres, actors, adult, link = details
+                title, overview, rating, genres, actors, adult, link, poster = details
 
-                st.image(poster, use_container_width=True)
+                with cols[i]:
+                    st.image(poster, use_container_width=True)
+                    st.caption(title)
 
-                st.markdown(f"### {title}")
-                st.write(f"⭐ Rating: {rating}")
-                st.write(f"🎭 Genres: {genres}")
-                st.write(f"👥 Actors: {actors}")
-                st.write(f"🔞 {adult}")
-                st.write(overview[:200] + "...")
-                st.markdown(f"[🎬 View on TMDB]({link})")
+    with tab3:
+        st.subheader("Watch History")
+
+        history = get_history(st.session_state.user)
+
+        if not history:
+            st.write("No history yet")
+        else:
+            for h in reversed(history):
+                st.write("• " + h)
 
 
 st.markdown("---")
-st.markdown("⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved")
+st.markdown("⭐💛 Designed by CHIRAG NAGPAL © 2026 — All rights reserved")A
