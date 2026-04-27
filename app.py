@@ -14,16 +14,18 @@ movies = pd.DataFrame(pd.read_pickle("movie_dict.pkl"))
 
 st.set_page_config(page_title="WatchNext", layout="wide")
 
-def poster(movie_id):
+def fetch_poster(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
-    try:
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        p = data.get("poster_path")
-        if p:
-            return "https://image.tmdb.org/t/p/w500" + p
-    except:
-        pass
+    for _ in range(2):
+        try:
+            r = requests.get(url, timeout=10)
+            data = r.json()
+            p = data.get("poster_path")
+            if p:
+                return "https://image.tmdb.org/t/p/w500" + p
+            return PLACEHOLDER
+        except:
+            time.sleep(1)
     return PLACEHOLDER
 
 def movie_meta(movie):
