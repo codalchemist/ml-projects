@@ -10,8 +10,10 @@ CREATE TABLE IF NOT EXISTS history (
 )
 """)
 
+conn.commit()
+
 def log_watch(user, movie):
-    cur.execute("INSERT INTO history VALUES (?, ?)", (user, movie))
+    cur.execute("INSERT INTO history (user, movie) VALUES (?, ?)", (user, movie))
     conn.commit()
 
 def get_history(user):
