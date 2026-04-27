@@ -1,4 +1,4 @@
-import streamlit as st
+\import streamlit as st
 import requests
 from datetime import datetime
 from recommender import hybrid_recommend, movies, trending_movies
@@ -54,13 +54,16 @@ div[data-testid="stImage"] img:hover {
 st.markdown("<h1 style='text-align:center;'>🎬 WatchNext</h1>", unsafe_allow_html=True)
 
 
+API_KEY = "3ee5dc2f1f74f34381d2b2a0e6b783a3"
+
+
 if "user" not in st.session_state:
     st.session_state.user = None
 
 
 def fetch_poster(movie_id):
     try:
-        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=3ee5dc2f1f74f34381d2b2a0e6b783a3"
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}"
         data = requests.get(url, timeout=10).json()
         path = data.get("poster_path")
         if path:
@@ -72,7 +75,7 @@ def fetch_poster(movie_id):
 
 def fetch_details(movie_id):
     try:
-        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=3ee5dc2f1f74f34381d2b2a0e6b783a3"
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&append_to_response=credits"
         return requests.get(url, timeout=10).json()
     except:
         return {}
@@ -80,10 +83,14 @@ def fetch_details(movie_id):
 
 def get_weather():
     try:
-        r = requests.get("https://wttr.in/?format=%C+%t", timeout=3)
-        return r.text
+        r = requests.get("https://wttr.in/?format=%t", timeout=3)
+        return r.text.strip()
     except:
-        return "Unknown"
+        return "N/A"
+
+
+def extract_genres(movie):
+    return movie.get("genres", [])
 
 
 if not st.session_state.user:
@@ -91,8 +98,6 @@ if not st.session_state.user:
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
     with tab1:
-        st.subheader("Login")
-
         username = st.text_input("Username", key="login_user")
         password = st.text_input("Password", type="password", key="login_pass")
 
@@ -100,20 +105,15 @@ if not st.session_state.user:
             if login_user(username, password):
                 st.session_state.user = username
                 st.rerun()
-            else:
-                st.error("Invalid credentials")
 
     with tab2:
-        st.subheader("Create Account")
-
         new_user = st.text_input("Username", key="signup_user")
         new_pass = st.text_input("Password", type="password", key="signup_pass")
 
         if st.button("Signup"):
             if create_user(new_user, new_pass):
                 st.success("Account created")
-            else:
-                st.error("User already exists")
+
 
 else:
 
@@ -125,16 +125,25 @@ else:
 
     st.sidebar.markdown("### 🌍 Context")
     st.sidebar.write("🕒", time_now)
-    st.sidebar.write("🌦️", weather)
+    st.sidebar.write("🌡️", weather + "°C")
 
-    tab1, tab2, tab3 = st.tabs(["For You", "Trending", "History"])
+
+    tab1, tab2, tab3 = st.tabs(["For You", "Popcorn Trending 🍿", "History"])
+
 
     with tab1:
-        st.subheader("🎯 Recommended for you")
+
+        st.subheader("🎯 Tell us your taste")
+
+        genre = st.selectbox(
+            "Select Genre",
+            ["All", "Action", "Comedy", "Drama", "Horror", "Romance", "Sci-Fi"]
+        )
 
         movie = st.selectbox("Pick a movie", movies["title"].values)
 
         if st.button("Get Recommendations"):
+
             recs, df = hybrid_recommend(movie)
 
             log_watch(st.session_state.user, movie)
@@ -142,30 +151,56 @@ else:
             cols = st.columns(min(5, len(recs)))
 
             for i, (idx, score) in enumerate(recs[:5]):
+
                 details = fetch_details(df.iloc[idx]["id"])
 
                 with cols[i]:
-                    st.image(fetch_poster(df.iloc[idx]["id"]), use_container_width=True)
-                    st.caption(df.iloc[idx]["title"])
 
-                    if details.get("overview"):
-                        st.write(details["overview"][:120] + "...")
+                    st.image(fetch_poster(df.iloc[idx]["id"]), use_container_width=True)
+
+                    st.markdown("**" + df.iloc[idx]["title"] + "**")
+
+                    st.write(details.get("overview", "No description available")[:120] + "...")
+
+                    rating = details.get("vote_average", "N/A")
+                    adult = "🔞 Adult" if details.get("adult") else "👨‍👩‍👧 Family Safe"
+
+                    st.write(f"⭐ Rating: {rating}")
+                    st.write(adult)
+
+                    genres = [g["name"] for g in details.get("genres", [])]
+                    st.write("🎭 Genres:", ", ".join(genres))
 
                     if details.get("homepage"):
-                        st.link_button("Watch / Info", details["homepage"])
+                        st.link_button("🎬 Watch / Info", details["homepage"])
+
 
     with tab2:
-        st.subheader("🔥 Trending Now")
+
+        st.subheader("🍿 Trending Now")
 
         top = trending_movies()
         cols = st.columns(4)
 
         for i in range(len(top)):
+            details = fetch_details(top.iloc[i]["id"])
+
             with cols[i % 4]:
+
                 st.image(fetch_poster(top.iloc[i]["id"]), use_container_width=True)
-                st.caption(top.iloc[i]["title"])
+
+                st.markdown("**" + top.iloc[i]["title"] + "**")
+
+                actors = details.get("credits", {}).get("cast", [])[:3]
+                actor_names = [a["name"] for a in actors]
+
+                st.write("🎭 Actors:", ", ".join(actor_names))
+
+                st.write("⭐", details.get("vote_average", "N/A"))
+
 
     with tab3:
+
         st.subheader("📊 Your Watch History")
 
         history = get_history(st.session_state.user)
@@ -179,6 +214,6 @@ else:
 
 st.markdown("""
 <div class="footer">
-🍿 Built by Chirag Nagpal • WatchNext © 2026 • All Rights Reserved
+⭐💛 Built by Chirag Nagpal • WatchNext © 2026 • All Rights Reserved
 </div>
 """, unsafe_allow_html=True)
