@@ -389,6 +389,7 @@ else:
         else:
             for i, h in enumerate(reversed(history), 1):
                 st.markdown(f"**{i}.** {h}")
+st.sidebar.caption("WatchNext v2.3")
 
 st.markdown("""
 <style>
