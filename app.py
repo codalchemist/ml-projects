@@ -15,7 +15,7 @@ st.set_page_config(page_title="WatchNext", layout="wide")
 movies = pd.DataFrame(pd.read_pickle("movie_dict.pkl"))
 
 if not API_KEY:
-    st.error("Missing TMDB API Key")
+    st.error("3ee5dc2f1f74f34381d2b2a0e6b783a3")
     st.stop()
 
 def fetch_movie_details(movie_id):
