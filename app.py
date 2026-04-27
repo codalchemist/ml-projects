@@ -17,7 +17,7 @@ st.markdown("""
 <style>
 .stApp {
     background-color: #0b0b0b;
-    color: #f5f5f5;
+    color: #ffffff;
     font-family: Helvetica, Arial, sans-serif;
 }
 
@@ -26,6 +26,7 @@ h1 {
     font-size: 40px;
     font-weight: 800;
     margin-bottom: 10px;
+    letter-spacing: 1px;
 }
 
 .block-container {
@@ -34,10 +35,11 @@ h1 {
 
 div[data-testid="stImage"] img {
     border-radius: 12px;
+    transition: 0.2s ease;
 }
 
-.stTabs [data-baseweb="tab"] {
-    font-weight: 600;
+div[data-testid="stImage"] img:hover {
+    transform: scale(1.03);
 }
 
 .footer {
@@ -56,29 +58,51 @@ div[data-testid="stImage"] img {
 
 st.markdown("<h1>🎬 WatchNext</h1>", unsafe_allow_html=True)
 
-#
+
 if "user" not in st.session_state:
     st.session_state.user = None
 
 
+
 def fetch_poster(movie_id):
+    """Guaranteed poster loader with fallback"""
     try:
         url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}"
-        data = requests.get(url, timeout=5).json()
+        r = requests.get(url, timeout=5)
+
+        if r.status_code != 200:
+            return POSTER_FALLBACK
+
+        data = r.json()
         path = data.get("poster_path")
+
         if path:
             return "https://image.tmdb.org/t/p/w500" + path
+
     except:
         pass
+
     return POSTER_FALLBACK
 
 
 def fetch_details(movie_id):
+    """Safe movie details fetch"""
     try:
         url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&append_to_response=credits"
-        return requests.get(url, timeout=5).json()
+        r = requests.get(url, timeout=5)
+
+        if r.status_code != 200:
+            return {}
+
+        return r.json()
+
     except:
         return {}
+
+
+def get_india_time():
+    """Fixed clean time (NO pytz, NO errors)"""
+    return datetime.now().strftime("%d %b %Y • %H:%M")
 
 
 def safe(val):
@@ -110,25 +134,24 @@ if not st.session_state.user:
                 st.success("Account created")
 
 
+
 else:
 
     st.sidebar.success(f"👤 {st.session_state.user}")
-    st.sidebar.write("🕒", datetime.now().strftime("%d %b %Y • %H:%M"))
-    st.sidebar.write("🌍 India 🇮🇳")
+    st.sidebar.write("📍 India 🇮🇳")
+    st.sidebar.write("🕒", get_india_time())
 
-    tab1, tab2, tab3 = st.tabs(["🎯 For You", "🍿 Trending", "📊 History"])
+    tab1, tab2, tab3 = st.tabs(["🎯  Movies For You", "🍿 Trending Movies ", "📊Your watch  History"])
 
-    # ---------------- FOR YOU ----------------
+
     with tab1:
-
-        st.subheader("Choose your mood / genre")
 
         genre = st.selectbox(
             "Select Genre",
             ["All", "Action", "Comedy", "Drama", "Horror", "Romance", "Sci-Fi"]
         )
 
-        # FIXED FILTER (NO BREAK)
+        # SAFE FILTER (NO BREAKS)
         if genre == "All":
             filtered = movies
         else:
@@ -168,7 +191,7 @@ else:
                     st.write("🎬 Actors:", actors)
 
                     st.link_button(
-                        "▶ View Movie",
+                        "▶ Watch / Info",
                         f"https://www.themoviedb.org/movie/{df.iloc[idx]['id']}"
                     )
 
@@ -180,7 +203,7 @@ else:
         top = trending_movies()
         cols = st.columns(4)
 
-        for i in range(min(8, len(top))):
+        for i in range(min(len(top), 8)):
 
             details = fetch_details(top.iloc[i]["id"])
 
@@ -201,8 +224,6 @@ else:
 
 
     with tab3:
-
-        st.subheader("Watch History")
 
         history = get_history(st.session_state.user)
 
