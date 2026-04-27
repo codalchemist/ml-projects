@@ -73,16 +73,15 @@ if "user" not in st.session_state:
 
             data = r.json()
 
-            if "poster_path" in data and data["poster_path"]:
-                return "https://image.tmdb.org/t/p/w500" + data["poster_path"]
+            poster_path = data.get("poster_path")
 
-        except:
-            pass
+            if poster_path:
+                return "https://image.tmdb.org/t/p/w500" + poster_path
 
-        return POSTER_FALLBACK
+            return POSTER_FALLBACK
 
-    except Exception as e:
-        return POSTER_FALLBACK
+        except Exception:
+            return POSTER_FALLBACK
 
 
 def fetch_details(movie_id):
