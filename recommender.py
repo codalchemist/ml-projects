@@ -10,7 +10,7 @@ cv = CountVectorizer(max_features=5000, stop_words="english")
 vector = cv.fit_transform(movies["tags"].fillna("")).toarray()
 similarity = cosine_similarity(vector)
 
-def hybrid_recommend(movie):
+def hybrid_recommend(movie, movies):
     idx = movies[movies["title"] == movie].index[0]
 
     content_scores = list(enumerate(similarity[idx]))
@@ -21,13 +21,16 @@ def hybrid_recommend(movie):
     scores = []
 
     for i, score in content_scores:
-        popularity = movies.iloc[i]["vote_average"] if "vote_average" in movies.columns else 1
+        popularity = 1
+        if "vote_average" in movies.columns:
+            popularity = movies.iloc[i]["vote_average"]
+
         final = (content_weight * score) + (pop_weight * popularity)
         scores.append((i, final))
 
     scores = sorted(scores, key=lambda x: x[1], reverse=True)[1:8]
 
-    return scores, movies
+    return scores
 
 
 def trending_movies():

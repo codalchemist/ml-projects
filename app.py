@@ -80,14 +80,14 @@ if st.session_state.user:
         movie = st.selectbox("Pick a movie", filtered["title"].values)
 
         if st.button("Get Recommendations"):
-            recs, data = hybrid_recommend(movie, movies)
+            recs = hybrid_recommend(movie, movies)
 
             cols = st.columns(5)
 
-            for i in range(len(recs)):
+            for i, (idx, _) in enumerate(recs):
                 with cols[i]:
-                    st.image(poster(movies.iloc[recs[i][0]]["id"]))
-                    st.caption(movies.iloc[recs[i][0]]["title"])
+                    st.image(fetch_poster(movies.iloc[idx]["id"]), use_container_width=True)
+                    st.caption(movies.iloc[idx]["title"])
 
             log_watch(st.session_state.user, movie)
 
