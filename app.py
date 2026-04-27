@@ -63,21 +63,21 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 
+    def fetch_poster(movie_id):
+        try:
+            url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
+            r = requests.get(url, timeout=6)
 
-def fetch_poster(movie_id):
-    try:
-        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
-        r = requests.get(url, timeout=6)
+            if r.status_code != 200:
+                return POSTER_FALLBACK
 
-        if r.status_code != 200:
-            return POSTER_FALLBACK
+            data = r.json()
 
-        data = r.json()
+            if "poster_path" in data and data["poster_path"]:
+                return "https://image.tmdb.org/t/p/w500" + data["poster_path"]
 
-        poster = data.get("poster_path")
-
-        if poster and poster != "None":
-            return f"https://image.tmdb.org/t/p/w500{poster}"
+        except:
+            pass
 
         return POSTER_FALLBACK
 
