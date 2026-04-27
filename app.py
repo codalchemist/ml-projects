@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pytz
 from datetime import datetime
 from recommender import hybrid_recommend, movies, trending_movies
 from auth import create_user, login_user
@@ -15,16 +16,18 @@ st.markdown("""
 .stApp {
     background-color: #0b0b0b;
     color: white;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .block-container {
-    padding: 2rem 3rem 6rem 3rem;
+    padding: 2rem 3rem 5rem 3rem;
 }
 
 h1 {
     text-align: center;
-    font-size: 42px;
-    font-weight: 700;
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: 1px;
 }
 
 div[data-testid="stImage"] img {
@@ -33,29 +36,24 @@ div[data-testid="stImage"] img {
 }
 
 div[data-testid="stImage"] img:hover {
-    transform: scale(1.05);
+    transform: scale(1.06);
+}
+
+.card {
+    background: #141414;
+    padding: 12px;
+    border-radius: 12px;
 }
 
 .footer {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    background-color: #0b0b0b;
     text-align: center;
-    color: #aaa;
-    padding: 10px;
+    padding: 20px;
+    color: gray;
     font-size: 12px;
-    border-top: 1px solid #222;
-}
-.card {
-    background: #111;
-    padding: 12px;
-    border-radius: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1>🎬 WatchNext</h1>", unsafe_allow_html=True)
 
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -80,10 +78,23 @@ def fetch_details(movie_id):
         return {}
 
 
-def get_weather():
+def detect_time():
+    try:
+        return datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%A • %H:%M")
+    except:
+        return datetime.now().strftime("%A • %H:%M")
+
+
+def detect_weather():
     try:
         r = requests.get("https://wttr.in/Delhi?format=%t", timeout=3)
         temp = r.text.strip()
+
+        if "F" in temp:
+            f = float(temp.replace("°F", "").replace("F", ""))
+            c = round((f - 32) * 5 / 9)
+            return f"{c}°C"
+
         return temp.replace("+", "").replace("Â", "")
     except:
         return "N/A"
@@ -92,9 +103,14 @@ def get_weather():
 def filter_by_genre(df, genre):
     if genre == "All":
         return df
-    if "genres" not in df.columns:
-        return df
-    return df[df["genres"].astype(str).str.contains(genre, case=False, na=False)]
+
+    if "tags" in df.columns:
+        return df[df["tags"].str.contains(genre.lower(), na=False)]
+
+    return df
+
+
+st.markdown("<h1>🎬 WatchNext</h1>", unsafe_allow_html=True)
 
 
 if not st.session_state.user:
@@ -102,8 +118,8 @@ if not st.session_state.user:
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
     with tab1:
-        u = st.text_input("Username", key="login_u")
-        p = st.text_input("Password", type="password", key="login_p")
+        u = st.text_input("Username")
+        p = st.text_input("Password", type="password")
 
         if st.button("Login"):
             if login_user(u, p):
@@ -113,8 +129,8 @@ if not st.session_state.user:
                 st.error("Invalid credentials")
 
     with tab2:
-        u = st.text_input("Username", key="sign_u")
-        p = st.text_input("Password", type="password", key="sign_p")
+        u = st.text_input("New Username")
+        p = st.text_input("New Password", type="password")
 
         if st.button("Signup"):
             if create_user(u, p):
@@ -122,39 +138,40 @@ if not st.session_state.user:
             else:
                 st.error("User already exists")
 
-else:
 
-    time_now = datetime.now().strftime("%A • %H:%M")
-    temp = get_weather()
+else:
 
     st.sidebar.markdown("### 👤 User")
     st.sidebar.success(st.session_state.user)
 
     st.sidebar.markdown("### 🌍 Context")
-    st.sidebar.write("🕒", time_now)
-    st.sidebar.write("🌡️", temp + "°C")
+    st.sidebar.write(f"🕒 {detect_time()}")
+    st.sidebar.write(f"🌡️ {detect_weather()}")
+
 
     tab1, tab2, tab3 = st.tabs(["For You", "🍿 Trending", "History"])
+
 
     with tab1:
 
         genre = st.selectbox(
-            "Choose Genre",
+            "Select Genre",
             ["All", "Action", "Comedy", "Drama", "Horror", "Romance", "Sci-Fi"]
         )
 
-        filtered_movies = filter_by_genre(movies, genre)
+        filtered = filter_by_genre(movies, genre)
 
-        movie = st.selectbox("Pick a movie", filtered_movies["title"].values)
+        movie = st.selectbox("Pick a movie", filtered["title"].values)
 
         if st.button("Get Recommendations"):
 
             recs, df = hybrid_recommend(movie)
             log_watch(st.session_state.user, movie)
 
-            cols = st.columns(min(5, len(recs)))
+            safe_len = min(5, len(recs))
+            cols = st.columns(safe_len)
 
-            for i, (idx, score) in enumerate(recs[:5]):
+            for i, (idx, score) in enumerate(recs[:safe_len]):
 
                 details = fetch_details(df.iloc[idx]["id"])
 
@@ -164,21 +181,25 @@ else:
 
                     st.markdown(f"**{df.iloc[idx]['title']}**")
 
-                    st.write(details.get("overview", "No description")[:140] + "...")
+                    st.write(details.get("overview", "No description")[:160] + "...")
 
                     st.write("⭐", details.get("vote_average", "N/A"))
 
+                    tag = "🔞 Adult" if details.get("adult") else "👨‍👩‍👧 Family Safe"
+                    st.write(tag)
+
                     if details.get("homepage"):
-                        st.link_button("▶ Watch / Info", details["homepage"])
+                        st.link_button("🎬 Watch / Info", details["homepage"])
                     else:
                         st.link_button(
-                            "▶ TMDB Page",
+                            "🎬 TMDB",
                             f"https://www.themoviedb.org/movie/{df.iloc[idx]['id']}"
                         )
 
+
     with tab2:
 
-        st.subheader("🍿 Trending Movies")
+        st.subheader("🍿 Trending Now")
 
         top = trending_movies()
         cols = st.columns(4)
@@ -200,7 +221,8 @@ else:
                 st.write("⭐", details.get("vote_average", "N/A"))
 
                 with st.expander("More info"):
-                    st.write(details.get("overview", "No description available"))
+                    st.write(details.get("overview", "No description"))
+
 
     with tab3:
 
