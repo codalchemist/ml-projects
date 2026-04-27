@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+from datetime import datetime
 from recommender import hybrid_recommend, movies, trending_movies
 from auth import create_user, login_user
 from analytics import log_watch, get_history
@@ -19,6 +20,7 @@ st.markdown("""
     padding-top: 2rem;
     padding-left: 3rem;
     padding-right: 3rem;
+    padding-bottom: 5rem;
 }
 
 h1, h2, h3 {
@@ -26,7 +28,7 @@ h1, h2, h3 {
 }
 
 div[data-testid="stImage"] img {
-    border-radius: 12px;
+    border-radius: 14px;
     transition: transform 0.25s ease;
 }
 
@@ -34,17 +36,22 @@ div[data-testid="stImage"] img:hover {
     transform: scale(1.07);
 }
 
-.css-1v0mbdj {
-    gap: 1.2rem;
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #0b0b0b;
+    text-align: center;
+    color: gray;
+    padding: 8px;
+    font-size: 12px;
+    border-top: 1px solid #222;
 }
 </style>
 """, unsafe_allow_html=True)
 
 
-st.markdown(
-    "<h1 style='text-align:center; margin-bottom:20px;'>🎬 WatchNext</h1>",
-    unsafe_allow_html=True
-)
+st.markdown("<h1 style='text-align:center;'>🎬 WatchNext</h1>", unsafe_allow_html=True)
 
 
 if "user" not in st.session_state:
@@ -61,6 +68,22 @@ def fetch_poster(movie_id):
     except:
         pass
     return "https://via.placeholder.com/500x750?text=No+Poster"
+
+
+def fetch_details(movie_id):
+    try:
+        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=3ee5dc2f1f74f34381d2b2a0e6b783a3"
+        return requests.get(url, timeout=10).json()
+    except:
+        return {}
+
+
+def get_weather():
+    try:
+        r = requests.get("https://wttr.in/?format=%C+%t", timeout=3)
+        return r.text
+    except:
+        return "Unknown"
 
 
 if not st.session_state.user:
@@ -94,7 +117,15 @@ if not st.session_state.user:
 
 else:
 
-    st.sidebar.write("👤 User:", st.session_state.user)
+    weather = get_weather()
+    time_now = datetime.now().strftime("%A • %H:%M")
+
+    st.sidebar.markdown("### 👤 User")
+    st.sidebar.success(st.session_state.user)
+
+    st.sidebar.markdown("### 🌍 Context")
+    st.sidebar.write("🕒", time_now)
+    st.sidebar.write("🌦️", weather)
 
     tab1, tab2, tab3 = st.tabs(["For You", "Trending", "History"])
 
@@ -111,9 +142,17 @@ else:
             cols = st.columns(min(5, len(recs)))
 
             for i, (idx, score) in enumerate(recs[:5]):
+                details = fetch_details(df.iloc[idx]["id"])
+
                 with cols[i]:
                     st.image(fetch_poster(df.iloc[idx]["id"]), use_container_width=True)
                     st.caption(df.iloc[idx]["title"])
+
+                    if details.get("overview"):
+                        st.write(details["overview"][:120] + "...")
+
+                    if details.get("homepage"):
+                        st.link_button("Watch / Info", details["homepage"])
 
     with tab2:
         st.subheader("🔥 Trending Now")
@@ -139,8 +178,7 @@ else:
 
 
 st.markdown("""
----
-<div style="text-align:center; color:gray; padding:10px;">
-Built by Chirag Nagpal • WatchNext © 2026 • All Rights Reserved
+<div class="footer">
+🍿 Built by Chirag Nagpal • WatchNext © 2026 • All Rights Reserved
 </div>
 """, unsafe_allow_html=True)
