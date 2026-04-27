@@ -16,9 +16,37 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
-.main {
-    background: linear-gradient(180deg, #0b0f19 0%, #111827 100%);
+.hero-banner {
+    position: relative;
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(11,15,25,0.95) 0%,
+            rgba(11,15,25,0.75) 40%,
+            rgba(11,15,25,0.35) 100%
+        ),
+        url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba');
+    background-size: cover;
+    background-position: center;
+    border-radius: 24px;
+    padding: 50px 40px;
+    margin-bottom: 35px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.hero-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 10px;
     color: white;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: #d1d5db;
+    max-width: 700px;
+    line-height: 1.7;
 }
 
 .block-container {
@@ -29,26 +57,75 @@ html, body, [class*="css"] {
 
 .stButton button {
     width: 100%;
-    border-radius: 12px;
-    height: 3rem;
-    font-weight: 600;
-    background: #e50914;
+    border-radius: 14px;
+    height: 3.2rem;
+    font-weight: 700;
+    font-size: 1rem;
+    background: linear-gradient(90deg, #e50914, #ff2d55);
     color: white;
     border: none;
-    transition: 0.2s ease;
+    box-shadow: 0 8px 20px rgba(229,9,20,0.35);
+    transition: all 0.25s ease;
 }
 
 .stButton button:hover {
-    background: #f6121d;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(229,9,20,0.45);
 }
 
 .movie-card {
-    background: #161b22;
-    padding: 14px;
+    background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    padding: 16px;
     border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.06);
-    min-height: 780px;
+    margin-top: 10px;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.30);
+    transition: all 0.25s ease;
+}
+
+.movie-card h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.movie-card p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.movie-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    border-color: rgba(229,9,20,0.35);
+}
+h1, h2, h3 {
+    font-weight: 700 !important;
+    letter-spacing: -0.5px;
+}
+label {
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+}
+
+img {
+    border-radius: 14px;
+    transition: 0.25s ease;
+}
+
+img:hover {
+    transform: scale(1.03);
+}
+
+div[data-baseweb="select"] > div {
+    border-radius: 12px !important;
+    background: #1f2937 !important;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+section[data-testid="stSidebar"] {
+    background: #111827;
 }
 
 .sidebar .sidebar-content {
@@ -154,7 +231,13 @@ def get_details(movie_id):
 def recommend(movie):
     idx = movies[movies["title"] == movie].index[0]
     scores = list(enumerate(similarity[idx]))
-    scores = sorted(scores, key=lambda x: x[1], reverse=True)[1:6]
+
+    scores = sorted(
+        scores,
+        key=lambda x: x[1],
+        reverse=True
+    )[1:10]
+
     return scores
 
 
@@ -163,10 +246,14 @@ if "user" not in st.session_state:
 
 
 st.markdown("""
-<h1 style='font-size:48px; margin-bottom:0;'>🎬 WatchNext</h1>
-<p style='color:#9ca3af; font-size:18px; margin-top:0;'>
-AI-Powered Movie Discovery Platform
-</p>
+<div class="hero-banner">
+    <div class="hero-title">🎬 WatchNext</div>
+    <div class="hero-subtitle">
+        Discover your next obsession with AI-powered recommendations,
+        trending picks, and personalized movie suggestions —
+        all in one cinematic experience.
+    </div>
+</div>
 """, unsafe_allow_html=True)
 genre_list = ["All", "Action", "Romance", "Comedy", "Drama", "Horror", "Sci-Fi", "Thriller"]
 
@@ -204,7 +291,7 @@ else:
 
     tab1, tab2, tab3 = st.tabs(["🎬 For You", "🔥 Trending", "📜 History"])
 
-    # ================= TAB 1 =================
+
     with tab1:
 
         st.markdown("## 🍿 Discover Your Next Watch")
@@ -244,24 +331,26 @@ else:
                 title, rating, overview, genres, actors, age, link, poster = data
 
                 with cols[i]:
-                    st.markdown("<div class='movie-card'>", unsafe_allow_html=True)
-
                     st.image(poster, use_container_width=True)
 
-                    st.markdown(f"### {title}")
-                    st.markdown(f"⭐ **{rating:.1f} / 10**")
-                    st.markdown(f"**🎭 Genre:** {genres}")
-                    st.markdown(f"**👥 Cast:** {actors}")
-                    st.markdown(f"**🔞 Advisory:** {age}")
-                    st.caption(overview[:140] + "...")
-
-                    st.markdown(f"[🎬 Watch on TMDB]({link})")
-
-                    st.markdown("</div>", unsafe_allow_html=True)
-
+                    st.markdown(f"""
+                    <div class="movie-card">
+                        <h3>{title}</h3>
+                        <p>⭐ <b>{rating:.1f} / 10</b></p>
+                        <p><b>🎭 Genre:</b> {genres}</p>
+                        <p><b>👥 Cast:</b> {actors}</p>
+                        <p><b>🔞 Advisory:</b> {age}</p>
+                        <p style='color:#9ca3af;'>{overview[:140]}...</p>
+                        <a href="{link}" target="_blank" style="
+                            color:#e50914;
+                            font-weight:600;
+                            text-decoration:none;
+                        ">🎬 Watch on TMDB</a>
+                    </div>
+                    """, unsafe_allow_html=True)
             log_history(st.session_state.user, movie)
 
-    # ================= TAB 2 =================
+
     with tab2:
 
         st.markdown("## 🔥 Trending This Week")
@@ -278,16 +367,17 @@ else:
                 title, rating, overview, genres, actors, age, link, poster = data
 
                 with cols[i]:
-                    st.markdown("<div class='movie-card'>", unsafe_allow_html=True)
-
                     st.image(poster, use_container_width=True)
-                    st.markdown(f"### {title}")
-                    st.markdown(f"⭐ **{rating:.1f} / 10**")
-                    st.caption(genres)
 
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="movie-card">
+                        <h3>{title}</h3>
+                        <p>⭐ <b>{rating:.1f} / 10</b></p>
+                        <p style='color:#9ca3af;'>{genres}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-    # ================= TAB 3 =================
+
     with tab3:
 
         st.markdown("## 📜 Your Watch History")
