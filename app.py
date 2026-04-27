@@ -10,6 +10,52 @@ API_KEY = "3ee5dc2f1f74f34381d2b2a0e6b783a3"
 PLACEHOLDER = "https://via.placeholder.com/500x750?text=No+Poster"
 
 st.set_page_config(page_title="WatchNext", layout="wide")
+st.markdown("""
+<style>
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+.main {
+    background: linear-gradient(180deg, #0b0f19 0%, #111827 100%);
+    color: white;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 7rem;
+    max-width: 1450px;
+}
+
+.stButton button {
+    width: 100%;
+    border-radius: 12px;
+    height: 3rem;
+    font-weight: 600;
+    background: #e50914;
+    color: white;
+    border: none;
+    transition: 0.2s ease;
+}
+
+.stButton button:hover {
+    background: #f6121d;
+    transform: translateY(-1px);
+}
+
+.movie-card {
+    background: #161b22;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    min-height: 780px;
+}
+
+.sidebar .sidebar-content {
+    background: #0b0f19;
+}
+</style>
+""", unsafe_allow_html=True)
 
 movies = pd.DataFrame(pd.read_pickle("movie_dict.pkl"))
 
@@ -116,7 +162,12 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 
-st.title("🎬 WatchNext")
+st.markdown("""
+<h1 style='font-size:48px; margin-bottom:0;'>🎬 WatchNext</h1>
+<p style='color:#9ca3af; font-size:18px; margin-top:0;'>
+AI-Powered Movie Discovery Platform
+</p>
+""", unsafe_allow_html=True)
 genre_list = ["All", "Action", "Romance", "Comedy", "Drama", "Horror", "Sci-Fi", "Thriller"]
 
 selected_genre = st.selectbox("🎭 Choose Mood / Genre", genre_list)
@@ -142,14 +193,21 @@ if not st.session_state.user:
                 st.rerun()
             else:
                 st.sidebar.error("Invalid login")
-
 else:
 
-    st.sidebar.success(f"Logged in as {st.session_state.user}")
+    st.sidebar.markdown("## 👤 Profile")
+    st.sidebar.info(f"Logged in as **{st.session_state.user}**")
+
+    if st.sidebar.button("Logout"):
+        st.session_state.user = None
+        st.rerun()
 
     tab1, tab2, tab3 = st.tabs(["🎬 For You", "🔥 Trending", "📜 History"])
 
+    # ================= TAB 1 =================
     with tab1:
+
+        st.markdown("## 🍿 Discover Your Next Watch")
 
         if selected_genre == "All":
             filtered_movies = movies
@@ -158,23 +216,27 @@ else:
                 movies["tags"].str.contains(selected_genre.lower(), na=False)
             ]
 
-        movie = st.selectbox("🎬 Pick a movie", filtered_movies["title"].values)
+        movie = st.selectbox(
+            "🎬 Pick a movie",
+            filtered_movies["title"].values
+        )
 
         if st.button("Recommend"):
 
-            recs = recommend(movie)
+            with st.spinner("Finding your next watch..."):
 
-            valid_movies = []
+                recs = recommend(movie)
+                valid_movies = []
 
-            for idx, _ in recs:
-                movie_id = movies.iloc[idx]["id"]
-                data = get_details(movie_id)
+                for idx, _ in recs:
+                    movie_id = movies.iloc[idx]["id"]
+                    data = get_details(movie_id)
 
-                if data:
-                    valid_movies.append(data)
+                    if data:
+                        valid_movies.append(data)
 
-                if len(valid_movies) == 5:
-                    break
+                    if len(valid_movies) == 5:
+                        break
 
             cols = st.columns(5)
 
@@ -182,27 +244,33 @@ else:
                 title, rating, overview, genres, actors, age, link, poster = data
 
                 with cols[i]:
+                    st.markdown("<div class='movie-card'>", unsafe_allow_html=True)
+
                     st.image(poster, use_container_width=True)
+
                     st.markdown(f"### {title}")
-                    st.write(f"⭐ Rating: {rating}")
-                    st.write(f"🎭 {genres}")
-                    st.write(f"👥 {actors}")
-                    st.write(f"🔞 {age}")
-                    st.write(overview[:150] + "...")
-                    st.markdown(f"[🎬 Watch]({link})")
+                    st.markdown(f"⭐ **{rating:.1f} / 10**")
+                    st.markdown(f"**🎭 Genre:** {genres}")
+                    st.markdown(f"**👥 Cast:** {actors}")
+                    st.markdown(f"**🔞 Advisory:** {age}")
+                    st.caption(overview[:140] + "...")
+
+                    st.markdown(f"[🎬 Watch on TMDB]({link})")
+
+                    st.markdown("</div>", unsafe_allow_html=True)
 
             log_history(st.session_state.user, movie)
 
+    # ================= TAB 2 =================
     with tab2:
 
-        st.subheader("🔥 Trending Now")
+        st.markdown("## 🔥 Trending This Week")
+        st.caption("Popular picks across the platform")
 
         trending = movies.sample(5)
-
         cols = st.columns(5)
 
         for i in range(5):
-
             movie_id = trending.iloc[i]["id"]
             data = get_details(movie_id)
 
@@ -210,20 +278,27 @@ else:
                 title, rating, overview, genres, actors, age, link, poster = data
 
                 with cols[i]:
-                    st.image(poster, use_container_width=True)
-                    st.caption(title)
+                    st.markdown("<div class='movie-card'>", unsafe_allow_html=True)
 
+                    st.image(poster, use_container_width=True)
+                    st.markdown(f"### {title}")
+                    st.markdown(f"⭐ **{rating:.1f} / 10**")
+                    st.caption(genres)
+
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ================= TAB 3 =================
     with tab3:
 
-        st.subheader("📜 Your Watch History")
+        st.markdown("## 📜 Your Watch History")
 
         history = get_history(st.session_state.user)
 
         if not history:
-            st.write("No watch history yet")
+            st.info("No watch history yet")
         else:
-            for h in reversed(history):
-                st.write("•", h)
+            for i, h in enumerate(reversed(history), 1):
+                st.markdown(f"**{i}.** {h}")
 
 st.markdown("""
 <style>
@@ -232,13 +307,13 @@ st.markdown("""
     left: 0;
     bottom: 0;
     width: 100%;
-    background-color: #0e1117;
-    color: white;
+    background: #0b0f19;
+    color: #9ca3af;
     text-align: center;
-    padding: 10px;
+    padding: 12px;
     font-size: 14px;
+    border-top: 1px solid #222;
     z-index: 999;
-    border-top: 1px solid #333;
 }
 </style>
 
