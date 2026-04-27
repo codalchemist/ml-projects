@@ -7,7 +7,7 @@ from recommender import recommend
 from analytics import log_watch, get_history
 from auth import create_user, login_user
 
-API_KEY = st.secrets.get("TMDB_API_KEY") or os.getenv("TMDB_API_KEY")
+API_KEY = st.secrets.get("3ee5dc2f1f74f34381d2b2a0e6b783a3") or os.getenv("3ee5dc2f1f74f34381d2b2a0e6b783a3")
 PLACEHOLDER = "https://via.placeholder.com/500x750?text=No+Poster"
 
 st.set_page_config(page_title="WatchNext", layout="wide")
