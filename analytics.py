@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect("analytics.db", check_same_thread=False)
+conn = sqlite3.connect("users.db", check_same_thread=False)
 cur = conn.cursor()
 
 cur.execute("""
@@ -16,4 +16,4 @@ def log_watch(user, movie):
 
 def get_history(user):
     cur.execute("SELECT movie FROM history WHERE user=?", (user,))
-    return [row[0] for row in cur.fetchall()]
+    return [r[0] for r in cur.fetchall()]
