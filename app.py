@@ -86,7 +86,7 @@ def fetch_poster(movie_id):
 
 
 def fetch_details(movie_id):
-   "
+
     try:
         url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&append_to_response=credits"
         r = requests.get(url, timeout=5)
