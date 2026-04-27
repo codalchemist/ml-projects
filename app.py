@@ -21,43 +21,36 @@ if "user" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
-
 def fetch_poster(movie_id):
     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
-
     for _ in range(2):
         try:
             r = requests.get(url, timeout=10)
             data = r.json()
-            path = data.get("poster_path")
-            if path:
-                return "https://image.tmdb.org/t/p/w500" + path
+            p = data.get("poster_path")
+            if p:
+                return "https://image.tmdb.org/t/p/w500" + p
             return PLACEHOLDER
         except:
             time.sleep(1)
-
     return PLACEHOLDER
-
 
 def recommend(movie):
     idx = movies[movies["title"] == movie].index[0]
     scores = list(enumerate(similarity[idx]))
-
     scores = sorted(scores, key=lambda x: x[1], reverse=True)[1:8]
 
-    titles = []
+    names = []
     posters = []
 
     for i in scores:
-        titles.append(movies.iloc[i[0]]["title"])
+        names.append(movies.iloc[i[0]]["title"])
         posters.append(fetch_poster(movies.iloc[i[0]]["id"]))
 
-    return titles, posters
-
+    return names, posters
 
 def trending_movies():
-    return movies.sort_values("vote_average", ascending=False).head(8)
-
+    return movies.sample(8)
 
 st.set_page_config(page_title="CineMatch AI", layout="wide")
 
@@ -77,8 +70,7 @@ else:
         movie = st.selectbox("Pick a movie", movies["title"].values)
 
         if st.button("Recommend"):
-            titles, posters = recommend(movie)
-
+            names, posters = recommend(movie)
             st.session_state.history.append(movie)
 
             cols = st.columns(5)
@@ -86,11 +78,10 @@ else:
             for i in range(5):
                 with cols[i]:
                     st.image(posters[i], use_container_width=True)
-                    st.caption(titles[i])
+                    st.caption(names[i])
 
     with tab2:
         trend = trending_movies()
-
         cols = st.columns(4)
 
         for i in range(4):
@@ -100,7 +91,7 @@ else:
 
     with tab3:
         if len(st.session_state.history) == 0:
-            st.write("No watch history yet")
+            st.write("No history yet")
         else:
             for m in reversed(st.session_state.history):
                 st.write("• " + m)
